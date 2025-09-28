@@ -2,6 +2,12 @@
 
 A Streamlit-based chatbot application that integrates Google's Gemini AI with Model Context Protocol (MCP) tools for enhanced functionality. The application provides a web interface for interacting with Gemini models while having access to custom tools like weather information and mathematical calculations.
 
+## Documentation
+
+- https://github.com/modelcontextprotocol/python-sdk
+- https://ai.google.dev/gemini-api/docs/quickstart
+- https://docs.streamlit.io/develop/api-reference/configuration
+
 ## Features
 
 - 🤖 **Gemini AI Integration**: Support for multiple Gemini models (2.5 Pro, 2.5 Flash, 2.5 Flash Lite)
