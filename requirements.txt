@@ -1,0 +1,4 @@
+mcp[cli]==1.15.0
+google-genai==1.39.1
+streamlit==1.50.0
+python-dotenv==1.0.0

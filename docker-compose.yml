@@ -1,0 +1,21 @@
+services:
+  chatbot:
+    # Use the local Dockerfile to build the image
+    build: .
+    container_name: gemini_streamlit_chatbot
+    # Map port 8501 on the host machine to port 8501 in the container
+    ports:
+      - "8501:8501"
+    # Set the restart policy
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # Streamlit configuration for security when running in Docker
+      - STREAMLIT_SERVER_ENABLE_CORS=true
+      - STREAMLIT_SERVER_ENABLE_XS_SRF_PROTECTION=false
+      - STREAMLIT_SERVER_HEADLESS=true
+    # Map the current directory on your host machine to /app in the container
+    # This allows for live code changes (optional, but helpful during development)
+    # volumes:
+    #   - .:/app
