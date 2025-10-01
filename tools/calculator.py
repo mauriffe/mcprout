@@ -19,14 +19,14 @@ def calculate(expression: str) -> str:
 
 calculate_tool = FunctionDeclaration(
     name="calculate",
-    description="Performs a mathematical calculation.",
+    description="[USER-APPROVAL-REQUIRED] Performs a mathematical calculation.",
     parameters={
         "type": "OBJECT",
         "properties": {
             "expression": {"type": "string", "description": "The mathematical expression to evaluate."},
         },
-        "required": ["expression"],
-    },
+        "required": ["expression"]
+    }
 )
 
 TOOL_MAP = {
