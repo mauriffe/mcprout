@@ -24,6 +24,8 @@ system_instructions = st.sidebar.text_area(
 )
 
 if st.sidebar.button("🔄 Reset Chat"):
+    st.cache_data.clear()
+    st.cache_resource.clear()
     st.session_state.chat_handler = ChatHandler(
         system_instructions=system_instructions,
         model_choice=model_choice
@@ -45,6 +47,8 @@ st.set_page_config(
 
 # Session init
 if "chat_handler" not in st.session_state:
+    st.cache_data.clear()
+    st.cache_resource.clear()
     st.session_state.chat_handler = ChatHandler(
         system_instructions=system_instructions,
         model_choice=model_choice
@@ -68,7 +72,13 @@ with st.form(key="chat_form", clear_on_submit=True):
     submitted = st.form_submit_button("Send")
 
 if submitted and user_input.strip():
+    # Save user message
     st.session_state.messages.append({"role": "user", "text": user_input})
-    response = st.session_state.chat_handler.handle_user_message(user_input)
+
+    # Show spinner while fetching Gemini response
+    with st.spinner("🤖 Gemini is thinking..."):
+        response = st.session_state.chat_handler.handle_user_message(user_input)
+
+    # Save Gemini's reply
     st.session_state.messages.append({"role": "gemini", "text": response})
     st.rerun()
