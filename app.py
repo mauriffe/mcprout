@@ -58,7 +58,7 @@ if "chat_handler" not in st.session_state:
 # Title
 st.title("💬 Gemini Chatbot")
 
-# Show conversation (simple layout)
+# Show conversation
 for msg in st.session_state.messages:
     timestamp = datetime.now().strftime("%H:%M")
     if msg["role"] == "user":
@@ -72,13 +72,21 @@ with st.form(key="chat_form", clear_on_submit=True):
     submitted = st.form_submit_button("Send")
 
 if submitted and user_input.strip():
-    # Save user message
+    # 1. Save user message
     st.session_state.messages.append({"role": "user", "text": user_input})
+    
+    # 2. Add "typing..." placeholder
+    st.session_state.messages.append({"role": "gemini", "text": "⏳ Gemini is thinking..."})
+    st.rerun()
 
-    # Show spinner while fetching Gemini response
+# Check for "typing..." placeholder and replace with actual response
+if st.session_state.messages and st.session_state.messages[-1]["text"] == "⏳ Gemini is thinking...":
+    user_message = st.session_state.messages[-2]["text"]
+
+    # Show spinner while fetching response
     with st.spinner("🤖 Gemini is thinking..."):
-        response = st.session_state.chat_handler.handle_user_message(user_input)
+        response = st.session_state.chat_handler.handle_user_message(user_message)
 
-    # Save Gemini's reply
-    st.session_state.messages.append({"role": "gemini", "text": response})
+    # Replace placeholder with real response
+    st.session_state.messages[-1] = {"role": "gemini", "text": response}
     st.rerun()
