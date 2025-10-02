@@ -76,7 +76,7 @@ class ChatHandler:
         self.system_instruction = system_instructions
         
         # Discover and configure MCP tools
-        self.available_tools, function_declarations = self._get_mcp_tools()
+        self.available_tools, function_declarations, self.sensitive_tools = self._get_mcp_tools()
         self.chat_tools = Tool(function_declarations=function_declarations)
         
         # Initialize Gemini client and create chat session
@@ -125,6 +125,7 @@ class ChatHandler:
                     
                     # Convert MCP tools to Gemini function declarations
                     all_tools_dec = []
+                    sensitive_tools = set()
                     for tool in mcp_tools.tools:
                         # Clean up the input schema by removing MCP-specific properties
                         params = {
@@ -133,6 +134,10 @@ class ChatHandler:
                             if k not in ["additionalProperties", "$schema"]
                         }
                         
+                        # Track sensitive tool names based on description marker
+                        if "[USER-APPROVAL-REQUIRED]" in (tool.description or ""):
+                            sensitive_tools.append(tool.name)
+
                         # Create Gemini-compatible function declaration
                         all_tools_dec.append(
                             FunctionDeclaration(
@@ -142,7 +147,7 @@ class ChatHandler:
                             )
                         )
                     
-                    return available_tools, all_tools_dec
+                    return available_tools, all_tools_dec, sensitive_tools
 
         # Run the async function synchronously
         return asyncio.run(_fetch_tools())
