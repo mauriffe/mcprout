@@ -47,22 +47,25 @@ class ChatHandler:
         chat_session: Active chat session with Gemini
     """
     
-    def __init__(self, system_instructions: str = "", model_choice: str = "gemini-2.5-flash-lite"):
+    def __init__(self, system_instructions: str = ""):
         """
         Initialize the chat handler with tools and chat session.
-        
-        Args:
-            system_instructions (str): System instructions for the AI model behavior
-            model_choice (str): Gemini model to use (default: "gemini-2.5-flash-lite")
-            
+                   
         Raises:
             ValueError: If GEMINI_API_KEY is not set in environment variables
         """
         # Load environment variables from .env file if present
         load_dotenv()
-        
+        try:
+            with open("data/system_instruction.txt", "r", encoding="utf-8") as f:
+                system_instructions = f.read()
+        except FileNotFoundError:
+            system_instructions = """You are an exceptionally helpful and friendly chatbot. 
+            Your purpose is to provide concise and accurate information as requested by the user. 
+            If a question is outside of your capabilities, politely inform the user that you are unable to help with that request.
+            """
         # Configure Gemini model and API key
-        self.gemini_model = model_choice
+        self.gemini_model = os.environ.get("GEMINI_MODEL")
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is not set in .env file or environment variables.")
@@ -136,7 +139,7 @@ class ChatHandler:
                         
                         # Track sensitive tool names based on description marker
                         if "[USER-APPROVAL-REQUIRED]" in (tool.description or ""):
-                            sensitive_tools.append(tool.name)
+                            sensitive_tools.add(tool.name)
 
                         # Create Gemini-compatible function declaration
                         all_tools_dec.append(

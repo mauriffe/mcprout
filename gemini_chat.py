@@ -7,7 +7,7 @@ def main():
     RESET = "\033[0m"          # Reset to default
 
     # Initialize the chat handler with tools
-    chat_handler = ChatHandler(system_instructions="",model_choice="gemini-2.5-flash-lite")
+    chat_handler = ChatHandler()
     print("Welcome to the chat with Gemini.")
     print("Type 'exit' to end the conversation.")
     while True:

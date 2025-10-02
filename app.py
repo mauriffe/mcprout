@@ -2,36 +2,7 @@ import streamlit as st
 from datetime import datetime
 from core.chat_handler import ChatHandler
 
-# Load system instructions preset
-try:
-    with open("data/system_instruction.txt", "r", encoding="utf-8") as f:
-        system_instructions_preset = f.read()
-except FileNotFoundError:
-    system_instructions_preset = """You are an exceptionally helpful and friendly chatbot. 
-Your purpose is to provide concise and accurate information as requested by the user. 
-If a question is outside of your capabilities, politely inform the user that you are unable to help with that request.
-"""
 
-# Sidebar config
-st.sidebar.header("⚙️ Configuration")
-model_choice = st.sidebar.selectbox(
-    "Select Gemini Model",
-    ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
-    index=2,
-)
-system_instructions = st.sidebar.text_area(
-    "System Instructions", system_instructions_preset, height=400
-)
-
-if st.sidebar.button("🔄 Reset Chat"):
-    st.cache_data.clear()
-    st.cache_resource.clear()
-    st.session_state.chat_handler = ChatHandler(
-        system_instructions=system_instructions,
-        model_choice=model_choice
-    )
-    st.session_state.messages = []
-    st.rerun()
 
 # Page config
 st.set_page_config(
@@ -45,14 +16,18 @@ st.set_page_config(
     }
 )
 
+hide_streamlit_style = """
+    <style>
+    div[data-testid="stAppDeployButton"] {display: none !important;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # Session init
 if "chat_handler" not in st.session_state:
     st.cache_data.clear()
     st.cache_resource.clear()
-    st.session_state.chat_handler = ChatHandler(
-        system_instructions=system_instructions,
-        model_choice=model_choice
-    )
+    st.session_state.chat_handler = ChatHandler()
     st.session_state.messages = []
 
 # Title
@@ -69,7 +44,19 @@ for msg in st.session_state.messages:
 # Input form
 with st.form(key="chat_form", clear_on_submit=True):
     user_input = st.text_input("Type your message here...")
-    submitted = st.form_submit_button("Send")
+    # Place Send and Reset side by side
+    col1, col2, col3 = st.columns([1, 4, 1])  # wider input area, smaller reset button
+    with col1:
+        submitted = st.form_submit_button("✅ Send")
+    with col3:
+        reset_clicked = st.form_submit_button("🔄 Reset Chat", help="Clear the conversation")
+
+if reset_clicked:
+    st.cache_data.clear()
+    st.cache_resource.clear()
+    st.session_state.chat_handler = ChatHandler()
+    st.session_state.messages = []
+    st.rerun()
 
 if submitted and user_input.strip():
     # 1. Save user message
