@@ -1,12 +1,10 @@
+#  app.py
 import streamlit as st
-from datetime import datetime
 from core.chat_handler import ChatHandler
-
-
 
 # Page config
 st.set_page_config(
-    page_title="Gemini Chatbot",
+    page_title="Gemini + MCP Chatbot",
     page_icon="💬",
     layout="wide",
     menu_items={
@@ -15,7 +13,7 @@ st.set_page_config(
         'About': "This is an *extremely* cool app!"
     }
 )
-
+st.title("💬 Gemini + MCP Chatbot")
 hide_streamlit_style = """
     <style>
     div[data-testid="stAppDeployButton"] {display: none !important;}
@@ -23,57 +21,47 @@ hide_streamlit_style = """
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# Session init
+# --- Reset button ---
+if st.sidebar.button("🔄 Reset Chat"):
+    st.session_state.clear()
+    st.rerun()
+
 if "chat_handler" not in st.session_state:
-    st.cache_data.clear()
-    st.cache_resource.clear()
     st.session_state.chat_handler = ChatHandler()
     st.session_state.messages = []
 
-# Title
-st.title("💬 Gemini Chatbot")
+chat_handler = st.session_state.chat_handler
 
-# Show conversation
+# Display past messages
 for msg in st.session_state.messages:
-    timestamp = datetime.now().strftime("%H:%M")
-    if msg["role"] == "user":
-        st.markdown(f"**🧑 You [{timestamp}]:** {msg['text']}")
-    else:
-        st.markdown(f"**🤖 Gemini [{timestamp}]:** {msg['text']}")
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-# Input form
-with st.form(key="chat_form", clear_on_submit=True):
-    user_input = st.text_input("Type your message here...")
-    # Place Send and Reset side by side
-    col1, col2, col3 = st.columns([1, 4, 1])  # wider input area, smaller reset button
-    with col1:
-        submitted = st.form_submit_button("✅ Send")
-    with col3:
-        reset_clicked = st.form_submit_button("🔄 Reset Chat", help="Clear the conversation")
+# User input
+if user_input := st.chat_input("Type your message..."):
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
 
-if reset_clicked:
-    st.cache_data.clear()
-    st.cache_resource.clear()
-    st.session_state.chat_handler = ChatHandler()
-    st.session_state.messages = []
-    st.rerun()
+    response = chat_handler.handle_user_message(user_input)
 
-if submitted and user_input.strip():
-    # 1. Save user message
-    st.session_state.messages.append({"role": "user", "text": user_input})
-    
-    # 2. Add "typing..." placeholder
-    st.session_state.messages.append({"role": "gemini", "text": "⏳ Gemini is thinking..."})
-    st.rerun()
+    if response:  # no approval needed
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        with st.chat_message("assistant"):
+            st.markdown(response)
 
-# Check for "typing..." placeholder and replace with actual response
-if st.session_state.messages and st.session_state.messages[-1]["text"] == "⏳ Gemini is thinking...":
-    user_message = st.session_state.messages[-2]["text"]
+# Approval UI
+if chat_handler.pending_tools:
+    tool_name, tool_args, _ = chat_handler.pending_tools[0]
+    st.sidebar.warning(f"⚠️ Tool '{tool_name}' requires approval")
+    st.sidebar.json(tool_args)
 
-    # Show spinner while fetching response
-    with st.spinner("🤖 Gemini is thinking..."):
-        response = st.session_state.chat_handler.handle_user_message(user_message)
-
-    # Replace placeholder with real response
-    st.session_state.messages[-1] = {"role": "gemini", "text": response}
-    st.rerun()
+    col1, col2 = st.sidebar.columns(2)
+    if col1.button("Approve"):
+        response = chat_handler.continue_after_approval(True)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.rerun()
+    if col2.button("Deny"):
+        response = chat_handler.continue_after_approval(False)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.rerun()

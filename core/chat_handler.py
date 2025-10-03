@@ -47,7 +47,7 @@ class ChatHandler:
         chat_session: Active chat session with Gemini
     """
     
-    def __init__(self, system_instructions: str = ""):
+    def __init__(self, system_instructions: str = "",  approval_callback=None):
         """
         Initialize the chat handler with tools and chat session.
                    
@@ -93,6 +93,9 @@ class ChatHandler:
             ),
             history=[]  # Start with empty conversation history
         )
+        # Store approval callback
+        self.approval_callback = approval_callback
+        self.pending_tools = [] 
 
     def _get_mcp_tools(self):
         """
@@ -208,6 +211,24 @@ class ChatHandler:
         """
         return asyncio.run(self.call_tool_async(tool_name, **kwargs))
 
+    def request_user_approval(self, tool_name: str, tool_args: dict) -> bool:
+        """
+        Request user approval before executing a sensitive tool.
+        
+        Args:
+            tool_name (str): The name of the tool requiring approval
+            tool_args (dict): The arguments the tool will be called with
+        
+        Returns:
+            bool: True if user approves, False otherwise
+        """
+        if self.approval_callback:
+            return self.approval_callback(tool_name, tool_args)
+            
+        print(f"\n⚠️ The tool '{tool_name}' requires approval before execution.")
+        print(f"Arguments: {json.dumps(tool_args, indent=2)}")
+        choice = input("Do you want to proceed? (yes/no): ").strip().lower()
+        return choice in ("yes", "y")
 
     def handle_user_message(self, user_input: str) -> str:
         """
@@ -237,6 +258,12 @@ class ChatHandler:
                 tool_name = tool_call.name
                 tool_args = tool_call.args
                 
+                # If sensitive → pause and request approval
+                if tool_name in self.sensitive_tools:
+                    self.pending_tools.append((tool_name, tool_args, response))
+                    # Tell UI to wait
+                    return None
+                   
                 # Execute the tool and capture the output
                 try:
                     tool_result = self.call_tool_sync(tool_name, **tool_args)
@@ -261,6 +288,39 @@ class ChatHandler:
         # Step 4: Return the final text response from the model
         return response.text
 
+    def continue_after_approval(self, approved: bool) -> str:
+        """
+        Resume a conversation after user approval decision.
+        """
+        if not self.pending_tools:
+            return "No pending tool requests."
+
+        tool_name, tool_args, prev_response = self.pending_tools.pop(0)
+
+        if not approved:
+            tool_output = Part.from_function_response(
+                name=tool_name,
+                response={"error": "Execution denied by user"}
+            )
+        else:
+            try:
+                tool_result = self.call_tool_sync(tool_name, **tool_args)
+                tool_output = Part.from_function_response(
+                    name=tool_name,
+                    response={"content": tool_result}
+                )
+            except Exception as e:
+                tool_output = Part.from_function_response(
+                    name=tool_name,
+                    response={"error": str(e)}
+                )
+
+        response = self.chat_session.send_message([tool_output])
+
+        # Save history and return model's text
+        self.save_chat_history()
+        return response.text
+        
     def save_chat_history(self):
         """
         Save the current chat history to a JSON file.
